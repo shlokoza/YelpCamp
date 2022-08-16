@@ -7,6 +7,7 @@ const ejsMate = require('ejs-mate')
 const Campground = require('./models/campground')
 const catchAsync = require('./utils/catchAsync')
 const ExpressError = require('./utils/ExpressError')
+const {campgroundSchema} = require('./schemas')
 
 
 //Database setup
@@ -33,6 +34,18 @@ app.set('views', path.join(__dirname, 'views'))
 app.use(express.urlencoded({extended:true}))
 app.use(methodOverride('_method'));
 
+const validateCampground = (req, res, next) => {
+        //desrtucturing the error message that we get after validation
+        const {error} = campgroundSchema.validate(req.body);
+        if(error){
+            //mapping that error message
+            const msg = error.details.map(el => el.message).join(',')
+            //throwing that error using the custom error class
+            throw new ExpressError(msg, 400)
+        } else {
+            next();
+        }
+}
 
 //basic router
 app.get('/', (req, res)=>{
@@ -52,12 +65,10 @@ app.get('/campgrounds/new', (req,res) => {
 })
 
 //creating the route that saves the new campground to the database
-app.post('/campgrounds', catchAsync(async (req,res,next) => {
-    if(!req.body.campground) throw new ExpressError('Invalid Campground Data', 400)
+app.post('/campgrounds', validateCampground, catchAsync(async (req,res,next) => {
     const campground = new Campground(req.body.campground);
     await campground.save();
     res.redirect(`/campgrounds/${campground._id}`)
-    // res.send(req.body)
 }))
 
 //creating the route to find the campground by id
@@ -73,7 +84,7 @@ app.get('/campgrounds/:id/edit', catchAsync(async(req,res) => {
 }))
 
 //creating the route that updates the existing data
-app.put('/campgrounds/:id', catchAsync(async(req,res) => {
+app.put('/campgrounds/:id', validateCampground, catchAsync(async(req,res) => {
     const { id } = req.params;
     const campground = await Campground.findByIdAndUpdate(id, {...req.body.campground})
     res.redirect(`/campgrounds/${campground._id}`)
