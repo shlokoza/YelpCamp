@@ -35,18 +35,30 @@ router.get('/new', (req,res) => {
 router.post('/', validateCampground, catchAsync(async (req,res,next) => {
     const campground = new Campground(req.body.campground);
     await campground.save();
+    //if the process of successfull add a flash message
+    req.flash('success', 'Created new campground!')
     res.redirect(`/campgrounds/${campground._id}`)
 }))
 
 //creating the route to find the campground by id
 router.get('/:id', catchAsync(async(req,res) => {
     const campground = await Campground.findById(req.params.id).populate('reviews')
-    res.render('campgrounds/show', {campground})
+    //if campground not found redirect to campground poge with an error flash message
+    if(!campground){
+        req.flash('error', 'Campoground not found!')
+        return res.redirect('/campgrounds')
+    }
+    res.render('campgrounds/show', { campground })
 }))
 
 //creating the route to edit the data
 router.get('/:id/edit', catchAsync(async(req,res) => {
     const campground = await Campground.findById(req.params.id)
+    //if user tries to edit the campground that does not exist, redirect to campground poge with an error flash message
+    if(!campground){
+        req.flash('error', 'Campoground not found!')
+        return res.redirect('/campgrounds')
+    }
     res.render('campgrounds/edit', {campground})
 }))
 
@@ -54,6 +66,8 @@ router.get('/:id/edit', catchAsync(async(req,res) => {
 router.put('/:id', validateCampground, catchAsync(async(req,res) => {
     const { id } = req.params;
     const campground = await Campground.findByIdAndUpdate(id, {...req.body.campground})
+    //if the process of successfull add a flash message
+    req.flash('success', 'Successfully updated campground!')
     res.redirect(`/campgrounds/${campground._id}`)
 }))
 
@@ -61,6 +75,7 @@ router.put('/:id', validateCampground, catchAsync(async(req,res) => {
 router.delete('/:id', catchAsync(async (req,res) => {
     const { id } = req.params;
     await Campground.findByIdAndDelete(id);
+    req.flash('success', 'Successfully deleted the campground!')
     res.redirect('/campgrounds')
 }))
 
