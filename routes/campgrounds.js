@@ -1,23 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const catchAsync = require('../utils/catchAsync')
-const ExpressError = require('../utils/ExpressError')
 const Campground = require('../models/campground')
-const {campgroundSchema} = require('../schemas')
-
-
-const validateCampground = (req, res, next) => {
-    //desrtucturing the error message that we get after validation
-    const {error} = campgroundSchema.validate(req.body);
-    if(error){
-        //mapping that error message
-        const msg = error.details.map(el => el.message).join(',')
-        //throwing that error using the custom error class
-        throw new ExpressError(msg, 400)
-    } else {
-        next();
-    }
-}
+const {isLoggedIn, isAuthor, validateCampground} = require('./middleware');
 
 
 //creating campground route to fetch and display campgrounds
@@ -27,13 +12,15 @@ router.get('/', catchAsync(async (req, res)=>{
 }))
 
 //creating a route to render the new.ejs file
-router.get('/new', (req,res) => {
+router.get('/new', isLoggedIn,(req,res) => {
     res.render('campgrounds/new')
 })
 
 //creating the route that saves the new campground to the database
-router.post('/', validateCampground, catchAsync(async (req,res,next) => {
+router.post('/', isLoggedIn, validateCampground, catchAsync(async (req,res,next) => {
     const campground = new Campground(req.body.campground);
+    //setting author to the current user's id
+    campground.author = req.user._id;
     await campground.save();
     //if the process of successfull add a flash message
     req.flash('success', 'Created new campground!')
@@ -42,7 +29,15 @@ router.post('/', validateCampground, catchAsync(async (req,res,next) => {
 
 //creating the route to find the campground by id
 router.get('/:id', catchAsync(async(req,res) => {
-    const campground = await Campground.findById(req.params.id).populate('reviews')
+    const campground = await Campground.findById(req.params.id)
+    //populating the reviews with the author of the review.
+    .populate({
+        path: 'reviews',
+        populate: {
+            path: 'author'
+        }
+    }).populate('author');//this will be the author of the campground.
+    console.log(campground)
     //if campground not found redirect to campground poge with an error flash message
     if(!campground){
         req.flash('error', 'Campoground not found!')
@@ -52,8 +47,9 @@ router.get('/:id', catchAsync(async(req,res) => {
 }))
 
 //creating the route to edit the data
-router.get('/:id/edit', catchAsync(async(req,res) => {
-    const campground = await Campground.findById(req.params.id)
+router.get('/:id/edit', isLoggedIn, isAuthor, catchAsync(async(req,res) => {
+    const {id} = req.params;
+    const campground = await Campground.findById(id)
     //if user tries to edit the campground that does not exist, redirect to campground poge with an error flash message
     if(!campground){
         req.flash('error', 'Campoground not found!')
@@ -63,7 +59,7 @@ router.get('/:id/edit', catchAsync(async(req,res) => {
 }))
 
 //creating the route that updates the existing data
-router.put('/:id', validateCampground, catchAsync(async(req,res) => {
+router.put('/:id', isLoggedIn, isAuthor, validateCampground, catchAsync(async(req,res) => {
     const { id } = req.params;
     const campground = await Campground.findByIdAndUpdate(id, {...req.body.campground})
     //if the process of successfull add a flash message
@@ -72,7 +68,7 @@ router.put('/:id', validateCampground, catchAsync(async(req,res) => {
 }))
 
 //creating the route to delete the data
-router.delete('/:id', catchAsync(async (req,res) => {
+router.delete('/:id', isLoggedIn, isAuthor, catchAsync(async (req,res) => {
     const { id } = req.params;
     await Campground.findByIdAndDelete(id);
     req.flash('success', 'Successfully deleted the campground!')

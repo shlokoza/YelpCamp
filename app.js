@@ -1,20 +1,23 @@
 const express = require('express');
-const path = require('path')
-const methodOverride = require('method-override')
-const mongoose = require('mongoose')
-const ejsMate = require('ejs-mate')
-const session = require('express-session')
-const flash = require('connect-flash')
-const ExpressError = require('./utils/ExpressError')
+const path = require('path');
+const methodOverride = require('method-override');
+const mongoose = require('mongoose');
+const ejsMate = require('ejs-mate');
+const session = require('express-session');
+const flash = require('connect-flash');
+const ExpressError = require('./utils/ExpressError');
+const passport = require('passport');
+const localStrategy = require('passport-local');
+const User = require('./models/user');
 
-
-const campground = require('./routes/campgrounds')
-const reviews = require('./routes/reviews')
+const usersRoutes = require('./routes/users');
+const campgroundRoutes = require('./routes/campgrounds');
+const reviewsRoutes = require('./routes/reviews');
 
 //Database setup
 mongoose.connect('mongodb://localhost:27017/yelp-camp', {
     useNewUrlParser: true,
-    useUnifiedTopology: true
+    useUnifiedTopology: true,
 });
 
 //Connecting the databse if not any errors
@@ -54,17 +57,30 @@ app.use(session(sessionConfig));
 //using flash for every route
 app.use(flash());
 
-//adding the flash messege to the res.locals so we can access it.
+//Setting up passport on our user model
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new localStrategy(User.authenticate()));
+
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
+
 app.use((req, res, next) => {
+    //setting returnTo property from session
+    res.locals.returnTo = req.session.returnTo;
+    //setting currentUser property to currently logged in user in res.locals
+    res.locals.currentUser = req.user;
+    //adding the flash messege to the res.locals so we can access it.
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
-
     next();
 })
 
 //using the routes
-app.use('/campgrounds', campground)
-app.use('/campgrounds/:id/reviews', reviews)
+app.use('/', usersRoutes);
+app.use('/campgrounds', campgroundRoutes);
+app.use('/campgrounds/:id/reviews', reviewsRoutes);
 
 //basic router
 app.get('/', (req, res)=>{
