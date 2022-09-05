@@ -2,10 +2,20 @@ const mongoose = require('mongoose')
 const Review = require('./review')
 const Schema = mongoose.Schema;
 
+const ImageSchema = new Schema({
+    url: String,
+    filename: String
+})
+
+//using virtual to add width property after /upload in image url.
+ImageSchema.virtual('thumbnail').get(function() {
+    return this.url.replace('/upload', '/upload/w_200')
+})
+
 //Creating a schema for the campgrounds
 const CampgroundSchema = new Schema({
     title: String,
-    image: String,
+    images: [ImageSchema],
     price: Number,
     description: String,
     location: String,
