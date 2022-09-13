@@ -20,6 +20,8 @@ router.route('/')
         catchAsync(campgrounds.createCampground)
     )
 
+router.get('/jsondata', campgrounds.jsonData)
+
 //creating a route to render the new.ejs file
 router.get('/new', isLoggedIn, campgrounds.renderNewForm)
 

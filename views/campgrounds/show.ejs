@@ -4,6 +4,7 @@
 <!-- Display campground -->
 <div class="row">
   <div class="col-6">
+    <div id='map'></div>
 
     <!-- carousel -->
     <div id = "campgroundCarousel" class="carousel slide" data-ride="carousel">
@@ -130,3 +131,12 @@
     </div>
   </div>
 </div>
+
+
+<script>
+  const mapToken = '<%- process.env.MAPBOX_TOKEN %>';
+  const campground = <%- JSON.stringify(campground)%>;
+  console.log(campground)
+</script>
+
+<script src="/javascripts/showPageMap.js"></script>
